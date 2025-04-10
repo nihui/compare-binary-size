@@ -36,14 +36,14 @@ jobs:
             pushd pr/build_$arch
             cmake ..
             cmake --build . -j 4
-            PR_SIZE_$arch=$(stat -c%s "hello")
+            PR_SIZE_[$arch]=$(stat -c%s "hello")
             popd
 
             mkdir -p base/build_$arch
             pushd base/build_$arch
             cmake ..
             cmake --build . -j 4
-            BASE_SIZE_$arch=$(stat -c%s "hello")
+            BASE_SIZE_[$arch]=$(stat -c%s "hello")
             popd
 
           done
@@ -53,12 +53,12 @@ jobs:
           echo "|--------------|--------------------|-----------------|--------------------|"
 
           for arch in "${archs[@]}"; do
-            DIFF=$((${PR_SIZE_$arch} - ${BASE_SIZE_$arch}))
+            DIFF=$((${PR_SIZE_[$arch]} - ${BASE_SIZE_[$arch]}))
             if [ $DIFF -gt 0 ]; then
               DIFF_STR="+$DIFF"
             else
               DIFF_STR="$DIFF"
             fi
 
-            echo "| $arch | ${BASE_SIZE_$arch} | ${PR_SIZE_$arch} | $DIFF_STR |"
+            echo "| $arch | ${BASE_SIZE_[$arch]} | ${PR_SIZE_[$arch]} | $DIFF_STR |"
           done
