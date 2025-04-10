@@ -28,7 +28,7 @@ jobs:
       - name: Compare sizes
         run: |
           # Define target architectures
-          archs=("x86_64" "aarch64")
+          archs=("x86_64" "armv7" "aarch64")
 
           for arch in "${archs[@]}"; do
 
