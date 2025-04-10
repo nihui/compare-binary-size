@@ -48,9 +48,9 @@ jobs:
 
           done
 
-          # Print table header
-          echo "| Architecture | Base Size (bytes) | PR Size (bytes) | Difference (bytes) |"
-          echo "|--------------|--------------------|-----------------|--------------------|"
+          # generate table
+          echo "| Architecture | Base Size (bytes) | PR Size (bytes) | Difference (bytes) |" >> compare-binary-size.md
+          echo "|--------------|--------------------|-----------------|--------------------|" >> compare-binary-size.md
 
           for arch in "${archs[@]}"; do
             DIFF=$((${PR_SIZE_[$arch]} - ${BASE_SIZE_[$arch]}))
@@ -60,5 +60,21 @@ jobs:
               DIFF_STR="$DIFF"
             fi
 
-            echo "| $arch | ${BASE_SIZE_[$arch]} | ${PR_SIZE_[$arch]} | $DIFF_STR |"
+            echo "| $arch | ${BASE_SIZE_[$arch]} | ${PR_SIZE_[$arch]} | $DIFF_STR |" >> compare-binary-size.md
           done
+
+      - name: Find Comment
+        uses: peter-evans/find-comment@v3
+        id: fc
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: '| Architecture | Base Size (bytes) | PR Size (bytes) | Difference (bytes) |'
+
+      - name: Create or update comment
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body-path: compare-binary-size.md
+          edit-mode: replace
