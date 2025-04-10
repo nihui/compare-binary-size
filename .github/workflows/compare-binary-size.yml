@@ -9,6 +9,11 @@ jobs:
   compare-size:
     runs-on: ubuntu-latest
     steps:
+      - name: install-toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install gcc-multilib g++-multilib g++-arm-linux-gnueabihf g++-aarch64-linux-gnu
+  
       - name: checkout pr branch
         uses: actions/checkout@v4
         with:
