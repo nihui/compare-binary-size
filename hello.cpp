@@ -1,7 +1,7 @@
-#include <stdio.h>
+#include <iostream>
 
 int main()
 {
-    fprintf(stderr, "hello\n");
+    std::cerr << "hello" << std::endl;
     return 0;
 }
