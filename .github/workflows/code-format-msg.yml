@@ -7,46 +7,48 @@ on:
     types: [completed]
 
 jobs:
+  pr-context:
+    name: 'Acquire PR Context'
+    runs-on: ubuntu-24.04
+    outputs:
+      PR_HEADSHA: ${{ steps.set-pr-context.outputs.head-sha }}
+      PR_NUMBER:  ${{ steps.set-pr-context.outputs.number   }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request' }}
+    steps:
+    - name: 'Get PR context'
+      id: set-pr-context
+      env:
+        GH_TOKEN: ${{ github.token }}
+        PR_TARGET_REPO: ${{ github.repository }}
+        PR_BRANCH: |-
+          ${{
+            (github.event.workflow_run.head_repository.owner.login != github.event.workflow_run.repository.owner.login)
+              && format('{0}:{1}', github.event.workflow_run.head_repository.owner.login, github.event.workflow_run.head_branch)
+              || github.event.workflow_run.head_branch
+          }}
+      run: |
+        gh pr view --repo "${PR_TARGET_REPO}" "${PR_BRANCH}" \
+          --json 'number,headRefOid' \
+          --jq '"number=\(.number)\nhead-sha=\(.headRefOid)"' \
+          >> $GITHUB_OUTPUT
+
   remove-comment-if-success:
     # 若 code-format 检查通过则移除之前发布的失败提示
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+    needs: [pr-context]
+    env:
+      PR_HEADSHA: ${{ needs.pr-context.outputs.PR_HEADSHA }}
+      PR_NUMBER:  ${{ needs.pr-context.outputs.PR_NUMBER  }}
     steps:
       - name: Remove existing "format check failed" comment
         uses: actions/github-script@v5
         with:
           script: |
-            // 通过 github-script，context 和 github 可直接使用
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-            const commitSha = context.payload.workflow_run.head_sha;
-
-            // 使用 github.rest.pulls.list 而不是 github.pulls.list
-            const { data: pullRequests } = await github.rest.pulls.list({
-              owner,
-              repo,
-              state: 'open',
-              head: `${owner}:${context.payload.workflow_run.head_branch}`,
-            });
-
-            // 如果没有对应 PR 就直接退出
-            if (!pullRequests || pullRequests.length === 0) {
-              console.log("No matching pull request found.");
-              return;
-            }
-
-            // 假设只会找到一个对应的PR
-            const pr = pullRequests.find(item => item.head.sha === commitSha);
-            if (!pr) {
-              console.log("No matching pull request found for the given SHA.");
-              return;
-            }
-
-            // 获取该PR下所有comments
             const { data: comments } = await github.rest.issues.listComments({
               owner,
               repo,
-              issue_number: pr.number,
+              issue_number: ${{ env.PR_NUMBER }},
             });
 
             // 查找之前的失败提示
@@ -69,40 +71,19 @@ jobs:
     # 若 code-format 检查失败则创建新的失败提示，前提是当前 PR 中还没有此提示
     if: ${{ github.event.workflow_run.conclusion == 'failure' }}
     runs-on: ubuntu-latest
+    needs: [pr-context]
+    env:
+      PR_HEADSHA: ${{ needs.pr-context.outputs.PR_HEADSHA }}
+      PR_NUMBER:  ${{ needs.pr-context.outputs.PR_NUMBER  }}
     steps:
       - name: Post comment on failed code-format if not existing
         uses: actions/github-script@v5
         with:
           script: |
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-            const commitSha = context.payload.workflow_run.head_sha;
-
-            // 使用 github.rest.pulls.list 获取 PR
-            const { data: pullRequests } = await github.rest.pulls.list({
-              owner,
-              repo,
-              state: 'open',
-              head: `${owner}:${context.payload.workflow_run.head_branch}`,
-            });
-
-            if (!pullRequests || pullRequests.length === 0) {
-              console.log("No matching pull request found.");
-              return;
-            }
-
-            // 假设只会找到一个对应的PR
-            const pr = pullRequests.find(item => item.head.sha === commitSha);
-            if (!pr) {
-              console.log("No matching pull request found for the given SHA.");
-              return;
-            }
-
-            // 获取该PR下所有comments
             const { data: comments } = await github.rest.issues.listComments({
               owner,
               repo,
-              issue_number: pr.number,
+              issue_number: ${{ env.PR_NUMBER }},
             });
 
             // 如果已经有相关提示，就不再发布
@@ -116,7 +97,7 @@ jobs:
               await github.rest.issues.createComment({
                 owner,
                 repo,
-                issue_number: pr.number,
+                issue_number: ${{ env.PR_NUMBER }},
                 body: "code-format 检查失败，请修复后再提交。",
               });
               console.log("Created code-format failure comment.");
