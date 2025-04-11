@@ -13,7 +13,7 @@ jobs:
     outputs:
       PR_HEADSHA: ${{ steps.set-pr-context.outputs.head-sha }}
       PR_NUMBER:  ${{ steps.set-pr-context.outputs.number   }}
-    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request' }}
+    if: ${{ github.event.workflow_run.event == 'pull_request' }}
     steps:
     - name: 'Get PR context'
       id: set-pr-context
