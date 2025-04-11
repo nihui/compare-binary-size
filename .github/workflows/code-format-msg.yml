@@ -3,7 +3,7 @@ name: "Check code-format workflow and manage comment"
 on:
   workflow_run:
     # 监听 code-format.yml workflow 执行完成事件
-    workflows: ["compare-binary-size"]
+    workflows: [compare-binary-size]
     types: [completed]
 
 jobs:
@@ -16,18 +16,20 @@ jobs:
         uses: actions/github-script@v5
         with:
           script: |
+            // 通过 github-script，context 和 github 可直接使用
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const commitSha = context.payload.workflow_run.head_sha;
 
-            // 获取触发 workflow_run 的 pull requests
-            const { data: pullRequests } = await github.pulls.list({
+            // 使用 github.rest.pulls.list 而不是 github.pulls.list
+            const { data: pullRequests } = await github.rest.pulls.list({
               owner,
               repo,
               state: 'open',
               head: `${owner}:${context.payload.workflow_run.head_branch}`,
             });
 
+            // 如果没有对应 PR 就直接退出
             if (!pullRequests || pullRequests.length === 0) {
               console.log("No matching pull request found.");
               return;
@@ -41,18 +43,19 @@ jobs:
             }
 
             // 获取该PR下所有comments
-            const { data: comments } = await github.issues.listComments({
+            const { data: comments } = await github.rest.issues.listComments({
               owner,
               repo,
               issue_number: pr.number,
             });
 
+            // 查找之前的失败提示
             const targetComment = comments.find(comment =>
               comment.body.includes("code-format 检查失败，请修复后再提交。")
             );
 
             if (targetComment) {
-              await github.issues.deleteComment({
+              await github.rest.issues.deleteComment({
                 owner,
                 repo,
                 comment_id: targetComment.id,
@@ -75,8 +78,8 @@ jobs:
             const repo = context.repo.repo;
             const commitSha = context.payload.workflow_run.head_sha;
 
-            // 获取触发 workflow_run 的 pull requests
-            const { data: pullRequests } = await github.pulls.list({
+            // 使用 github.rest.pulls.list 获取 PR
+            const { data: pullRequests } = await github.rest.pulls.list({
               owner,
               repo,
               state: 'open',
@@ -96,7 +99,7 @@ jobs:
             }
 
             // 获取该PR下所有comments
-            const { data: comments } = await github.issues.listComments({
+            const { data: comments } = await github.rest.issues.listComments({
               owner,
               repo,
               issue_number: pr.number,
@@ -110,7 +113,7 @@ jobs:
             if (existingComment) {
               console.log("A code-format failure comment already exists.");
             } else {
-              await github.issues.createComment({
+              await github.rest.issues.createComment({
                 owner,
                 repo,
                 issue_number: pr.number,
