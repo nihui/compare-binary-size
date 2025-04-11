@@ -45,6 +45,8 @@ jobs:
         uses: actions/github-script@v5
         with:
           script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
             const { data: comments } = await github.rest.issues.listComments({
               owner,
               repo,
@@ -80,6 +82,8 @@ jobs:
         uses: actions/github-script@v5
         with:
           script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
             const { data: comments } = await github.rest.issues.listComments({
               owner,
               repo,
