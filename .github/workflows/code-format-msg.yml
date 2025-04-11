@@ -3,7 +3,7 @@ name: "Check code-format workflow and manage comment"
 on:
   workflow_run:
     # 监听 code-format.yml workflow 执行完成事件
-    workflows: ["code-format.yml"]
+    workflows: ["compare-binary-size.yml"]
     types: [completed]
 
 jobs:
